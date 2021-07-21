@@ -172,8 +172,6 @@ namespace EMIEMC_Viewer
                 return;
             }
 
-
-
             EMIChart.Series[seriename].Points.Clear();
 
             // Draw Graph
@@ -193,6 +191,10 @@ namespace EMIEMC_Viewer
 
             }
 
+            // Add Legend
+            EMIChart.Series["EMI2"].IsVisibleInLegend = true;
+            EMIChart.Series["EMI2"].LegendText = Graph2PathBox.Text.Substring(Graph2PathBox.Text.LastIndexOf(@"\") + 1); ;
+
         }
 
 
@@ -209,6 +211,8 @@ namespace EMIEMC_Viewer
             int pkpoints = 5;
 
             List<double> xs = new List<double>();
+
+            EMILimits EMILimits = new EMILimits();
 
             EMIChart.Visible = true;
 
@@ -264,78 +268,51 @@ namespace EMIEMC_Viewer
 
             EMIChart.ChartAreas[0].AxisX.IsLabelAutoFit = false;
 
+            // Find Limits
+            IndvLimit CurLim = null;
 
-            // Draw Limits
-            switch (firstpoint)
+            // Special case for Conducted EMI
+            if (firstpoint == 150000)
             {
-                case 1000000000:
-                    CISPR32_LimitBox.SelectedItem = "CISPR32 Class B - 1 GHz to 6 GHz (3m)";
-                    EMIChart.Series["Limits1"].Points.AddXY(1000, 70);
-                    EMIChart.Series["Limits1"].Points.AddXY(3000, 70);
-                    EMIChart.Series["Limits1"].Points.AddXY(3000, 74);
-                    EMIChart.Series["Limits1"].Points.AddXY(6000, 74);
-
-                    // -6dB Limits
-                    EMIChart.Series["Limits2"].Points.AddXY(1000, 64);
-                    EMIChart.Series["Limits2"].Points.AddXY(3000, 64);
-                    EMIChart.Series["Limits2"].Points.AddXY(3000, 66);
-                    EMIChart.Series["Limits2"].Points.AddXY(6000, 66);
-
-                    // Set Axis
-                    xs = new List<double>() { 1000, 2000, 3000, 4000, 5000, 6000 };
-                    EMIChart.ChartAreas[0].AxisY.Minimum = 40;
-                    EMIChart.ChartAreas[0].AxisY.Maximum = 80;
-                    EMIChart.ChartAreas[0].AxisX.Minimum = 1000;
-                    EMIChart.ChartAreas[0].AxisX.Maximum = 6000;
-
-                    break;
-                case 30000000:
-                    CISPR32_LimitBox.SelectedItem = "CISPR32 Class B - 30 MHz to 1 GHz (3m)";
-                    EMIChart.Series["Limits1"].Points.AddXY(30, 40);
-                    EMIChart.Series["Limits1"].Points.AddXY(230, 40);
-                    EMIChart.Series["Limits1"].Points.AddXY(230, 47);
-                    EMIChart.Series["Limits1"].Points.AddXY(1000, 47);
-
-                    // -6dB Limits
-                    EMIChart.Series["Limits2"].Points.AddXY(30, 34);
-                    EMIChart.Series["Limits2"].Points.AddXY(230, 34);
-                    EMIChart.Series["Limits2"].Points.AddXY(230, 41);
-                    EMIChart.Series["Limits2"].Points.AddXY(1000, 41);
-
-                    // Set Axis
-                    xs = new List<double>() { 30, 50, 100, 200, 300, 500, 1000 };
-                    EMIChart.ChartAreas[0].AxisY.Minimum = 0;
-                    EMIChart.ChartAreas[0].AxisY.Maximum = 50;
-                    EMIChart.ChartAreas[0].AxisX.Minimum = 30;
-                    EMIChart.ChartAreas[0].AxisX.Maximum = 1000;
-                    break;
-
-                case 150000:
-                    CISPR32_LimitBox.SelectedItem = "CISPR32 Class B - 15 kHz to 30 MHz (3m)"; // QPeak
-                    EMIChart.Series["Limits1"].Points.AddXY(0.15, 66);
-                    EMIChart.Series["Limits1"].Points.AddXY(0.5, 56);
-                    EMIChart.Series["Limits1"].Points.AddXY(0.5, 56);
-                    EMIChart.Series["Limits1"].Points.AddXY(5, 56);
-                    EMIChart.Series["Limits1"].Points.AddXY(5, 60);
-                    EMIChart.Series["Limits1"].Points.AddXY(30, 60);
-
-                    // -6dB Limits
-                    EMIChart.Series["Limits2"].Points.AddXY(0.15, 60);
-                    EMIChart.Series["Limits2"].Points.AddXY(0.5, 50);
-                    EMIChart.Series["Limits2"].Points.AddXY(0.5, 50);
-                    EMIChart.Series["Limits2"].Points.AddXY(5, 50);
-                    EMIChart.Series["Limits2"].Points.AddXY(5, 54);
-                    EMIChart.Series["Limits2"].Points.AddXY(30, 54);
-
-                    // Set Axis
-                    xs = new List<double>() { 0.15, 0.5, 1, 3, 10, 30 };
-                    EMIChart.ChartAreas[0].AxisY.Minimum = 20;
-                    EMIChart.ChartAreas[0].AxisY.Maximum = 70;
-                    EMIChart.ChartAreas[0].AxisX.Minimum = 0.15;
-                    EMIChart.ChartAreas[0].AxisX.Maximum = 30;
-                    break;
+                if (Graph1PathBox.Text.Contains("QP", StringComparison.OrdinalIgnoreCase))
+                {
+                    CurLim = EMILimits.LimitList.Find(x => x.startfreq == firstpoint && x.detector == Detector.QPeak);
+                    CISPR_DetectorBox.SelectedIndex = 1;
+                }
+                else
+                {
+                    CurLim = EMILimits.LimitList.Find(x => x.startfreq == firstpoint && x.detector == Detector.Average);
+                    CISPR_DetectorBox.SelectedIndex = 0;
+                }
+                CISPR_DetectorBox.Enabled = true;
+            }
+            else
+            {
+                CurLim = EMILimits.LimitList.Find(x => x.startfreq == firstpoint);
+                CISPR_DetectorBox.Enabled = false;
             }
 
+            if (CurLim != null) {
+                AddLog("Found Limit: " + CurLim.name);
+            } else {
+                AddLog("Unable to match any limit with Start Point  = " + firstpoint);
+                return;
+            }
+
+
+            // Draw Limits
+            foreach (PointF P in CurLim.freqLimits)
+            {
+                EMIChart.Series["Limits1"].Points.AddXY(P.X, P.Y);
+                EMIChart.Series["Limits2"].Points.AddXY(P.X, P.Y - 6); // -6 dB Limit2
+            }
+
+            // Define Axis
+            xs = CurLim.AxisFreq;
+            EMIChart.ChartAreas[0].AxisX.Minimum = CurLim.AxisXMin;
+            EMIChart.ChartAreas[0].AxisX.Maximum = CurLim.AxisXMax;
+            EMIChart.ChartAreas[0].AxisY.Minimum = CurLim.AxisYMin;
+            EMIChart.ChartAreas[0].AxisY.Maximum = CurLim.AxisYMax;
 
             // Draw X labels
             double spacer = 0.7d;
@@ -431,35 +408,36 @@ namespace EMIEMC_Viewer
             EMIChart.Annotations.Add(PkListAnnot);
 
             // Add Status
-            TextAnnotation TA_Status = new TextAnnotation();
-            TA_Status.AnchorX = 13;
-            TA_Status.AnchorY = 10;
+            RectangleAnnotation TA_Status = new RectangleAnnotation();
+            TA_Status.AnchorX = 5;
+            TA_Status.AnchorY = 15;
+            TA_Status.AllowMoving = true;
+            TA_Status.ForeColor = Color.Black;
 
             switch (status)
             {
                 case 0:
                     TA_Status.Text = "PASS";
-                    TA_Status.ForeColor = Color.LightGreen;
+                    TA_Status.BackColor = Color.MediumSpringGreen;
                     break;
                 case 1:
                     TA_Status.Text = "FAIL?";
-                    TA_Status.ForeColor = Color.Orange;
-                    TA_Status.AnchorX += 1;
+                    TA_Status.BackColor = Color.Orange;
                     break;
                 default:
                     TA_Status.Text = "FAIL";
-                    TA_Status.ForeColor = Color.Red;
+                    TA_Status.BackColor = Color.Red;
                     break;
             }
 
-            TA_Status.Font = new Font("Consolas", 20F, FontStyle.Bold);
+            TA_Status.Font = new Font("Consolas", 16F, FontStyle.Bold);
 
             EMIChart.Annotations.Add(TA_Status);
 
             // Add Norm
             TextAnnotation CISPRAnnot = new TextAnnotation();
 
-            CISPRAnnot.Text = CISPR32_LimitBox.Text;
+            CISPRAnnot.Text = CurLim.name;
             CISPRAnnot.ForeColor = Color.White;
             CISPRAnnot.SetAnchor(EMIChart.Series["Limits1"].Points[EMIChart.Series["Limits1"].Points.Count - 1]);
             CISPRAnnot.Alignment = ContentAlignment.BottomCenter;
@@ -467,6 +445,10 @@ namespace EMIEMC_Viewer
 
             EMIChart.Annotations.Add(CISPRAnnot);
 
+            // Add Legend
+            EMIChart.Series["EMI1"].LegendText = Graph1PathBox.Text.Substring(Graph1PathBox.Text.LastIndexOf(@"\") + 1);
+            LegendBox.Text = EMIChart.Series["EMI1"].LegendText;
+            EMIChart.Series["EMI2"].IsVisibleInLegend = false;
         }
 
         private void AddLog(string log, bool noCRLF = false)
@@ -488,7 +470,7 @@ namespace EMIEMC_Viewer
 
         private void SetTitle_Btn_Click(object sender, EventArgs e)
         {
-            string title = "";
+            string title = "prout";
 
             if (InputBox("Set Title", "Enter Graph title:", ref title) != DialogResult.OK)
                 return;
@@ -509,6 +491,8 @@ namespace EMIEMC_Viewer
             TitleAnnot.AnchorY = 4;
             TitleAnnot.Alignment = ContentAlignment.TopLeft;
             TitleAnnot.Font = new Font("Consolas", 14F, FontStyle.Bold);
+
+            TitleAnnot.AllowTextEditing = true;
 
             EMIChart.Annotations.Add(TitleAnnot);
 
@@ -536,6 +520,22 @@ namespace EMIEMC_Viewer
 
             Process_EMCEMI_File();
         }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+            EMIChart.Legends[0].Enabled = !checkBox1.Checked;
+        }
+
+        private void SetLegend1_Btn_Click(object sender, EventArgs e)
+        {
+            EMIChart.Series["EMI1"].LegendText = LegendBox.Text;
+        }
+
+        private void SetLegend2_Btn_Click(object sender, EventArgs e)
+        {
+            EMIChart.Series["EMI2"].LegendText = LegendBox.Text;
+        }
+
 
         // Input Box Functions
         public static DialogResult InputBox(string title, string promptText, ref string value)

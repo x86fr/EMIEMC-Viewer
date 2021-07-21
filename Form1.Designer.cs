@@ -28,7 +28,9 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.Windows.Forms.DataVisualization.Charting.PolygonAnnotation polygonAnnotation1 = new System.Windows.Forms.DataVisualization.Charting.PolygonAnnotation();
             System.Windows.Forms.DataVisualization.Charting.ChartArea chartArea1 = new System.Windows.Forms.DataVisualization.Charting.ChartArea();
+            System.Windows.Forms.DataVisualization.Charting.Legend legend1 = new System.Windows.Forms.DataVisualization.Charting.Legend();
             System.Windows.Forms.DataVisualization.Charting.Series series1 = new System.Windows.Forms.DataVisualization.Charting.Series();
             System.Windows.Forms.DataVisualization.Charting.Series series2 = new System.Windows.Forms.DataVisualization.Charting.Series();
             System.Windows.Forms.DataVisualization.Charting.Series series3 = new System.Windows.Forms.DataVisualization.Charting.Series();
@@ -50,13 +52,21 @@
             this.SaveGraphBtn2 = new System.Windows.Forms.Button();
             this.SaveGraphBtn = new System.Windows.Forms.Button();
             this.SetTitle_Btn = new System.Windows.Forms.Button();
-            this.CISPR32_LimitBox = new System.Windows.Forms.ComboBox();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.SetLegend1_Btn = new System.Windows.Forms.Button();
+            this.SetLegend2_Btn = new System.Windows.Forms.Button();
+            this.LegendBox = new System.Windows.Forms.TextBox();
+            this.checkBox1 = new System.Windows.Forms.CheckBox();
+            this.label1 = new System.Windows.Forms.Label();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.EMIChart)).BeginInit();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
             this.groupBox1.SuspendLayout();
+            this.groupBox2.SuspendLayout();
+            this.groupBox3.SuspendLayout();
             this.SuspendLayout();
             // 
             // statusStrip1
@@ -89,6 +99,9 @@
             // 
             // EMIChart
             // 
+            polygonAnnotation1.LineColor = System.Drawing.Color.DarkRed;
+            polygonAnnotation1.Name = "PolygonAnnotation1";
+            this.EMIChart.Annotations.Add(polygonAnnotation1);
             this.EMIChart.BackColor = System.Drawing.Color.Black;
             chartArea1.AxisX.LabelStyle.ForeColor = System.Drawing.Color.White;
             chartArea1.AxisX.LineColor = System.Drawing.Color.White;
@@ -111,6 +124,18 @@
             chartArea1.Name = "ChartArea1";
             this.EMIChart.ChartAreas.Add(chartArea1);
             this.EMIChart.Dock = System.Windows.Forms.DockStyle.Fill;
+            legend1.BackColor = System.Drawing.Color.Black;
+            legend1.BorderColor = System.Drawing.Color.Gainsboro;
+            legend1.BorderDashStyle = System.Windows.Forms.DataVisualization.Charting.ChartDashStyle.Dash;
+            legend1.DockedToChartArea = "ChartArea1";
+            legend1.Docking = System.Windows.Forms.DataVisualization.Charting.Docking.Top;
+            legend1.ForeColor = System.Drawing.Color.White;
+            legend1.InterlacedRowsColor = System.Drawing.Color.White;
+            legend1.MaximumAutoSize = 75F;
+            legend1.Name = "Legend1";
+            legend1.TitleAlignment = System.Drawing.StringAlignment.Near;
+            legend1.TitleForeColor = System.Drawing.Color.White;
+            this.EMIChart.Legends.Add(legend1);
             this.EMIChart.Location = new System.Drawing.Point(0, 0);
             this.EMIChart.Name = "EMIChart";
             series1.BorderColor = System.Drawing.Color.White;
@@ -123,12 +148,15 @@
             series2.ChartArea = "ChartArea1";
             series2.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.FastLine;
             series2.Color = System.Drawing.Color.Aqua;
+            series2.IsVisibleInLegend = false;
+            series2.Legend = "Legend1";
             series2.Name = "EMI2";
             series3.BorderWidth = 2;
             series3.ChartArea = "ChartArea1";
             series3.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Line;
             series3.Color = System.Drawing.Color.Salmon;
             series3.IsVisibleInLegend = false;
+            series3.Legend = "Legend1";
             series3.Name = "Limits1";
             series4.BorderDashStyle = System.Windows.Forms.DataVisualization.Charting.ChartDashStyle.Dash;
             series4.BorderWidth = 2;
@@ -136,6 +164,7 @@
             series4.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Line;
             series4.Color = System.Drawing.Color.Salmon;
             series4.IsVisibleInLegend = false;
+            series4.Legend = "Legend1";
             series4.Name = "Limits2";
             this.EMIChart.Series.Add(series1);
             this.EMIChart.Series.Add(series2);
@@ -158,13 +187,12 @@
             // 
             // panel2
             // 
+            this.panel2.Controls.Add(this.groupBox3);
+            this.panel2.Controls.Add(this.groupBox2);
             this.panel2.Controls.Add(this.groupBox1);
             this.panel2.Controls.Add(this.OpenFileBtn);
-            this.panel2.Controls.Add(this.CISPR_DetectorBox);
             this.panel2.Controls.Add(this.SaveGraphBtn2);
             this.panel2.Controls.Add(this.SaveGraphBtn);
-            this.panel2.Controls.Add(this.SetTitle_Btn);
-            this.panel2.Controls.Add(this.CISPR32_LimitBox);
             this.panel2.Controls.Add(this.textBox1);
             this.panel2.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panel2.Location = new System.Drawing.Point(0, 768);
@@ -180,7 +208,7 @@
             this.groupBox1.Controls.Add(this.Graph1radioButton);
             this.groupBox1.Location = new System.Drawing.Point(132, 8);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(335, 104);
+            this.groupBox1.Size = new System.Drawing.Size(335, 111);
             this.groupBox1.TabIndex = 20;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Files";
@@ -236,11 +264,12 @@
             // CISPR_DetectorBox
             // 
             this.CISPR_DetectorBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.CISPR_DetectorBox.Enabled = false;
             this.CISPR_DetectorBox.FormattingEnabled = true;
             this.CISPR_DetectorBox.Items.AddRange(new object[] {
             "Average",
             "Quasi-Peak"});
-            this.CISPR_DetectorBox.Location = new System.Drawing.Point(924, 8);
+            this.CISPR_DetectorBox.Location = new System.Drawing.Point(63, 17);
             this.CISPR_DetectorBox.Name = "CISPR_DetectorBox";
             this.CISPR_DetectorBox.Size = new System.Drawing.Size(100, 21);
             this.CISPR_DetectorBox.TabIndex = 10;
@@ -267,32 +296,92 @@
             // 
             // SetTitle_Btn
             // 
-            this.SetTitle_Btn.Location = new System.Drawing.Point(609, 87);
+            this.SetTitle_Btn.Location = new System.Drawing.Point(113, 75);
             this.SetTitle_Btn.Name = "SetTitle_Btn";
-            this.SetTitle_Btn.Size = new System.Drawing.Size(85, 25);
+            this.SetTitle_Btn.Size = new System.Drawing.Size(98, 25);
             this.SetTitle_Btn.TabIndex = 5;
             this.SetTitle_Btn.Text = "Set Title";
             this.SetTitle_Btn.UseVisualStyleBackColor = true;
             this.SetTitle_Btn.Click += new System.EventHandler(this.SetTitle_Btn_Click);
-            // 
-            // CISPR32_LimitBox
-            // 
-            this.CISPR32_LimitBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.CISPR32_LimitBox.FormattingEnabled = true;
-            this.CISPR32_LimitBox.Items.AddRange(new object[] {
-            "CISPR32 Class B - 15 kHz to 30 MHz (3m)",
-            "CISPR32 Class B - 30 MHz to 1 GHz (3m)",
-            "CISPR32 Class B - 1 GHz to 6 GHz (3m)"});
-            this.CISPR32_LimitBox.Location = new System.Drawing.Point(707, 8);
-            this.CISPR32_LimitBox.Name = "CISPR32_LimitBox";
-            this.CISPR32_LimitBox.Size = new System.Drawing.Size(211, 21);
-            this.CISPR32_LimitBox.TabIndex = 6;
             // 
             // openFileDialog1
             // 
             this.openFileDialog1.DefaultExt = "emiemc";
             this.openFileDialog1.Filter = "EMCEMI files (*.emcemi)|*.emcemi";
             this.openFileDialog1.RestoreDirectory = true;
+            // 
+            // groupBox2
+            // 
+            this.groupBox2.Controls.Add(this.label1);
+            this.groupBox2.Controls.Add(this.CISPR_DetectorBox);
+            this.groupBox2.Location = new System.Drawing.Point(473, 8);
+            this.groupBox2.Name = "groupBox2";
+            this.groupBox2.Size = new System.Drawing.Size(249, 111);
+            this.groupBox2.TabIndex = 21;
+            this.groupBox2.TabStop = false;
+            this.groupBox2.Text = "Limits";
+            // 
+            // groupBox3
+            // 
+            this.groupBox3.Controls.Add(this.checkBox1);
+            this.groupBox3.Controls.Add(this.LegendBox);
+            this.groupBox3.Controls.Add(this.SetTitle_Btn);
+            this.groupBox3.Controls.Add(this.SetLegend2_Btn);
+            this.groupBox3.Controls.Add(this.SetLegend1_Btn);
+            this.groupBox3.Location = new System.Drawing.Point(728, 8);
+            this.groupBox3.Name = "groupBox3";
+            this.groupBox3.Size = new System.Drawing.Size(217, 111);
+            this.groupBox3.TabIndex = 22;
+            this.groupBox3.TabStop = false;
+            this.groupBox3.Text = "Legends";
+            // 
+            // SetLegend1_Btn
+            // 
+            this.SetLegend1_Btn.Location = new System.Drawing.Point(6, 44);
+            this.SetLegend1_Btn.Name = "SetLegend1_Btn";
+            this.SetLegend1_Btn.Size = new System.Drawing.Size(98, 25);
+            this.SetLegend1_Btn.TabIndex = 6;
+            this.SetLegend1_Btn.Text = "Set Legend #1";
+            this.SetLegend1_Btn.UseVisualStyleBackColor = true;
+            this.SetLegend1_Btn.Click += new System.EventHandler(this.SetLegend1_Btn_Click);
+            // 
+            // SetLegend2_Btn
+            // 
+            this.SetLegend2_Btn.Location = new System.Drawing.Point(113, 44);
+            this.SetLegend2_Btn.Name = "SetLegend2_Btn";
+            this.SetLegend2_Btn.Size = new System.Drawing.Size(98, 25);
+            this.SetLegend2_Btn.TabIndex = 7;
+            this.SetLegend2_Btn.Text = "Set Legend #2";
+            this.SetLegend2_Btn.UseVisualStyleBackColor = true;
+            this.SetLegend2_Btn.Click += new System.EventHandler(this.SetLegend2_Btn_Click);
+            // 
+            // LegendBox
+            // 
+            this.LegendBox.Location = new System.Drawing.Point(6, 18);
+            this.LegendBox.Name = "LegendBox";
+            this.LegendBox.Size = new System.Drawing.Size(205, 20);
+            this.LegendBox.TabIndex = 8;
+            this.LegendBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            // 
+            // checkBox1
+            // 
+            this.checkBox1.AutoSize = true;
+            this.checkBox1.Location = new System.Drawing.Point(7, 80);
+            this.checkBox1.Name = "checkBox1";
+            this.checkBox1.Size = new System.Drawing.Size(100, 17);
+            this.checkBox1.TabIndex = 9;
+            this.checkBox1.Text = "Disable Legend";
+            this.checkBox1.UseVisualStyleBackColor = true;
+            this.checkBox1.CheckedChanged += new System.EventHandler(this.checkBox1_CheckedChanged);
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(6, 22);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(51, 13);
+            this.label1.TabIndex = 11;
+            this.label1.Text = "Detector:";
             // 
             // Form1
             // 
@@ -318,6 +407,10 @@
             this.panel2.PerformLayout();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
+            this.groupBox2.ResumeLayout(false);
+            this.groupBox2.PerformLayout();
+            this.groupBox3.ResumeLayout(false);
+            this.groupBox3.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -332,7 +425,6 @@
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Panel panel2;
         private System.Windows.Forms.Button SetTitle_Btn;
-        private System.Windows.Forms.ComboBox CISPR32_LimitBox;
         private System.Windows.Forms.Button SaveGraphBtn;
         private System.Windows.Forms.Button SaveGraphBtn2;
         private System.Windows.Forms.ComboBox CISPR_DetectorBox;
@@ -343,6 +435,13 @@
         private System.Windows.Forms.TextBox Graph1PathBox;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.OpenFileDialog openFileDialog1;
+        private System.Windows.Forms.GroupBox groupBox3;
+        private System.Windows.Forms.GroupBox groupBox2;
+        private System.Windows.Forms.TextBox LegendBox;
+        private System.Windows.Forms.Button SetLegend2_Btn;
+        private System.Windows.Forms.Button SetLegend1_Btn;
+        private System.Windows.Forms.CheckBox checkBox1;
+        private System.Windows.Forms.Label label1;
     }
 }
 
