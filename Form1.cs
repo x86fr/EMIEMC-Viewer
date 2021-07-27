@@ -25,7 +25,7 @@ namespace EMIEMC_Viewer
             this.Text += " " + appver.Major.ToString() + '.' + appver.Minor.ToString() + 'b';
 
             Graph1PathBox.Text = @"D:\temp\TD 500 MESH\H500.emcemi";
-            Process_EMCEMI_File();
+            //Process_EMCEMI_File();
         }
 
         private void Form1_DragEnter(object sender, DragEventArgs e)
@@ -85,34 +85,41 @@ namespace EMIEMC_Viewer
         }
 
 
-        private List<Peaks> FindPeaks(RSAPersist EMIObj, DataPointCollection CISPRPt)
+        private List<Peaks> FindPeaks(RSAPersist EMIObj, PointF[] CISPRPt)
         {
             double lowfreq, highfreq, pkrange, currange, curpeakvalue = -200, curpeakfreq = 0;
             int curpeakpoint = 0;
-            double PointX, PointY;
+            double PointY;
             int pos = 0;
 
-            int nbrange = 20;
+            int rangeperdecade = 1;
 
             var peaklist = new List<Peaks>();
 
             // Find Freq range for peak detection
             lowfreq = double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X[0]);
             highfreq = double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X[EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X.Count - 1]);
-            pkrange = (highfreq - lowfreq) / nbrange;
             currange = lowfreq;
 
-            AddLog("Low Freq: " + lowfreq);
-            AddLog("High Freq: " + highfreq);
-            AddLog("Peak Seach Range: " + pkrange);
+            AddLog("Low Freq: " + lowfreq / 1000000 + " MHz");
+            AddLog("High Freq: " + highfreq / 1000000 + " MHz");
+            //AddLog("Peak Seach Range: " + pkrange / 1000000 + " MHz");
 
-            foreach (string X in EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X)
+            double[] Xvalues;
+            double[] Yvalues;
+
+            if (EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.YUnits == "dBm")
+                Yvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y.Select(x => double.Parse(x) + 107).ToArray();
+            else
+                Yvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y.Select(x => double.Parse(x)).ToArray();
+
+            Xvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X.Select(x => double.Parse(x)).ToArray();
+
+            pkrange = Math.Pow(10, Math.Floor(Math.Log10(lowfreq))) / rangeperdecade;
+
+            foreach (double PointX in Xvalues)
             {
-                PointX = Double.Parse(X);
-                PointY = Double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y[pos]);
-
-                if (EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.YUnits == "dBm") 
-                    PointY += 107; 
+                PointY = Yvalues[pos];
 
                 // Detect peak
                 if (PointY > curpeakvalue)
@@ -122,15 +129,20 @@ namespace EMIEMC_Viewer
                     curpeakpoint = pos;
                 }
 
-                // Add to list at each end of range
-                if(PointX >= (currange + pkrange))
+
+                if (PointX >= (currange + pkrange))
                 {
+                    AddLog("Actual range: " + currange / 1000000 + " MHz to " + (currange + pkrange) / 1000000 + " MHz");
+                    AddLog("Floor Log10 : " + Math.Floor(Math.Log10(PointX)));
                     peaklist.Add(new Peaks(curpeakfreq, curpeakvalue, curpeakpoint));
                     curpeakfreq = 0;
                     curpeakvalue = 0;
                     curpeakpoint = 0;
                     currange += pkrange;
+                    pkrange = Math.Pow(10, Math.Floor(Math.Log10(PointX))) / rangeperdecade;
+
                 }
+
 
                 pos++;
             }
@@ -138,13 +150,41 @@ namespace EMIEMC_Viewer
             // Compute Margin against CISPR Limit provided
             foreach(Peaks cpk in peaklist)
             {
-                foreach(DataPoint cdp in CISPRPt)
+                int limID = 0;
+
+                // Get low & high limit range
+                foreach (PointF cdp in CISPRPt)
                 {
-                    if ((cdp.XValue * 1000000) < cpk.freq)
+                    if ((cdp.X * 1000000) >= cpk.freq)
                     {
-                        cpk.margin = cdp.YValues[0] - cpk.value;
+                        limID--;
+                        break;
                     }
+                    else
+                        limID++;
                 }
+
+                // AddLog("Freq: " + cpk.freq + " - Limit Min: " + CISPRPt[limID].Y + " / Limit Max: " + CISPRPt[limID+1].Y);
+
+                // Check if limit slope is linear or not
+                if (CISPRPt[limID].Y == CISPRPt[limID + 1].Y)
+                {
+                    // Slope is linear, just compute margin
+                    cpk.margin = CISPRPt[limID].Y - cpk.value;
+                }
+                else
+                {
+                    // Slope is non linear, must compute the actual limit value first
+                    double slope = (CISPRPt[limID + 1].Y - CISPRPt[limID].Y) / (CISPRPt[limID + 1].X - CISPRPt[limID].X);
+                    double org = CISPRPt[limID].Y - slope * CISPRPt[limID].X;
+
+                    double limitatPoint = slope * (cpk.freq / 1000000) + org;
+
+                    cpk.margin = limitatPoint - cpk.value;
+
+                    //AddLog("NON LINEAR SLOPE! | Limit: " + limitatPoint);
+                }
+
             }
 
             // Sort By Peak Value
@@ -208,7 +248,7 @@ namespace EMIEMC_Viewer
             int status = 0;
             string pkstr = "";
 
-            int pkpoints = 5;
+            int pkpoints = 6;
 
             List<double> xs = new List<double>();
 
@@ -232,7 +272,7 @@ namespace EMIEMC_Viewer
             if (YUnits == "dBm") {
                 AddLog(" - dBm converted to dBuV/m");
                 dbuVm = true;
-            }  else if (YUnits != "dBuVPerMeter") {
+            }  else if (YUnits != "dBuVPerMeter" && YUnits != "dBuV") {
                 AddLog(" Raw Unit not supported!");
                 return;
             }
@@ -241,6 +281,9 @@ namespace EMIEMC_Viewer
             logMin = Math.Log10(firstpoint);
 
             AddLog("First Point: " + firstpoint.ToString() + " Hz");
+
+            DragDropLabel.Visible = false;
+            EMIChart.Visible = true;
 
             EMIChart.ChartAreas[0].AxisX.Minimum = 0;
             EMIChart.ChartAreas[0].AxisX.Maximum = 1000;
@@ -264,7 +307,6 @@ namespace EMIEMC_Viewer
             EMIChart.ChartAreas[0].AxisX.MinorTickMark.IntervalOffset = EMIChart.ChartAreas[0].AxisX.MinorGrid.IntervalOffset;
 
             EMIChart.ChartAreas[0].AxisX.LabelStyle.Interval = 1;
-            EMIChart.ChartAreas[0].AxisY.LabelStyle.Format = "#0\" dBµV/m\"";
 
             EMIChart.ChartAreas[0].AxisX.IsLabelAutoFit = false;
 
@@ -299,6 +341,8 @@ namespace EMIEMC_Viewer
                 return;
             }
 
+            // Additionnal Graph Settings
+            EMIChart.ChartAreas[0].AxisY.LabelStyle.Format = "#0\" " + CurLim.unit + "\"";
 
             // Draw Limits
             foreach (PointF P in CurLim.freqLimits)
@@ -361,7 +405,7 @@ namespace EMIEMC_Viewer
             }
 
             // Find Peaks
-            List<Peaks> Pk = FindPeaks(EMIObj, EMIChart.Series["Limits1"].Points);
+            List<Peaks> Pk = FindPeaks(EMIObj, CurLim.freqLimits);
 
             // Draw Annotations
             EMIChart.Annotations.Clear();
@@ -400,10 +444,11 @@ namespace EMIEMC_Viewer
             TextAnnotation PkListAnnot = new TextAnnotation();
             PkListAnnot.ForeColor = Color.White;
             PkListAnnot.Text = pkstr;
-            PkListAnnot.AnchorX = 86;
+            PkListAnnot.AnchorX = 84;
             PkListAnnot.AnchorY = 92;
             PkListAnnot.Alignment = ContentAlignment.TopLeft;
             PkListAnnot.AllowMoving = true;
+            PkListAnnot.Font = new Font(new FontFamily("Consolas"), 8f);
 
             EMIChart.Annotations.Add(PkListAnnot);
 

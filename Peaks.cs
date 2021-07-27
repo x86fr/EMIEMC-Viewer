@@ -28,4 +28,5 @@ namespace EMIEMC_Viewer
             return source?.IndexOf(toCheck, comp) >= 0;
         }
     }
+
 }
