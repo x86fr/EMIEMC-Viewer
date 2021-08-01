@@ -38,17 +38,22 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.StatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.LogBox = new System.Windows.Forms.TextBox();
             this.EMIChart = new System.Windows.Forms.DataVisualization.Charting.Chart();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.DragDropLabel = new System.Windows.Forms.Label();
             this.panel2 = new System.Windows.Forms.Panel();
-            this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.groupBox_Chart = new System.Windows.Forms.GroupBox();
+            this.checkBox_YZero = new System.Windows.Forms.CheckBox();
+            this.Theme_Box = new System.Windows.Forms.ComboBox();
+            this.checkBox_IsLog = new System.Windows.Forms.CheckBox();
+            this.groupBox_Legends = new System.Windows.Forms.GroupBox();
             this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.LegendBox = new System.Windows.Forms.TextBox();
             this.SetTitle_Btn = new System.Windows.Forms.Button();
             this.SetLegend2_Btn = new System.Windows.Forms.Button();
             this.SetLegend1_Btn = new System.Windows.Forms.Button();
-            this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.groupBox_Limits = new System.Windows.Forms.GroupBox();
             this.label1 = new System.Windows.Forms.Label();
             this.CISPR_DetectorBox = new System.Windows.Forms.ComboBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
@@ -60,13 +65,14 @@
             this.SaveGraphBtn2 = new System.Windows.Forms.Button();
             this.SaveGraphBtn = new System.Windows.Forms.Button();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.DragDropLabel = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.EMIChart)).BeginInit();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
-            this.groupBox3.SuspendLayout();
-            this.groupBox2.SuspendLayout();
+            this.groupBox_Chart.SuspendLayout();
+            this.groupBox_Legends.SuspendLayout();
+            this.groupBox_Limits.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -86,17 +92,17 @@
             this.StatusLabel.Size = new System.Drawing.Size(102, 17);
             this.StatusLabel.Text = "Drag/Drop a File...";
             // 
-            // textBox1
+            // LogBox
             // 
-            this.textBox1.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.textBox1.Font = new System.Drawing.Font("Consolas", 8F);
-            this.textBox1.Location = new System.Drawing.Point(1121, 8);
-            this.textBox1.Multiline = true;
-            this.textBox1.Name = "textBox1";
-            this.textBox1.ReadOnly = true;
-            this.textBox1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.textBox1.Size = new System.Drawing.Size(468, 104);
-            this.textBox1.TabIndex = 1;
+            this.LogBox.Anchor = System.Windows.Forms.AnchorStyles.Right;
+            this.LogBox.Font = new System.Drawing.Font("Consolas", 8F);
+            this.LogBox.Location = new System.Drawing.Point(1121, 8);
+            this.LogBox.Multiline = true;
+            this.LogBox.Name = "LogBox";
+            this.LogBox.ReadOnly = true;
+            this.LogBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.LogBox.Size = new System.Drawing.Size(468, 111);
+            this.LogBox.TabIndex = 1;
             // 
             // EMIChart
             // 
@@ -179,42 +185,108 @@
             // panel1
             // 
             this.panel1.AutoSize = true;
-            this.panel1.Controls.Add(this.DragDropLabel);
             this.panel1.Controls.Add(this.EMIChart);
+            this.panel1.Controls.Add(this.DragDropLabel);
             this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panel1.Location = new System.Drawing.Point(0, 0);
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(1601, 768);
             this.panel1.TabIndex = 3;
             // 
+            // DragDropLabel
+            // 
+            this.DragDropLabel.BackColor = System.Drawing.Color.Transparent;
+            this.DragDropLabel.Font = new System.Drawing.Font("Verdana", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.DragDropLabel.ForeColor = System.Drawing.SystemColors.ButtonShadow;
+            this.DragDropLabel.Location = new System.Drawing.Point(449, 317);
+            this.DragDropLabel.Name = "DragDropLabel";
+            this.DragDropLabel.Size = new System.Drawing.Size(690, 125);
+            this.DragDropLabel.TabIndex = 4;
+            this.DragDropLabel.Text = "Drag && Drop File Here";
+            this.DragDropLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
             // panel2
             // 
-            this.panel2.Controls.Add(this.groupBox3);
-            this.panel2.Controls.Add(this.groupBox2);
+            this.panel2.Controls.Add(this.groupBox_Chart);
+            this.panel2.Controls.Add(this.groupBox_Legends);
+            this.panel2.Controls.Add(this.groupBox_Limits);
             this.panel2.Controls.Add(this.groupBox1);
             this.panel2.Controls.Add(this.OpenFileBtn);
             this.panel2.Controls.Add(this.SaveGraphBtn2);
             this.panel2.Controls.Add(this.SaveGraphBtn);
-            this.panel2.Controls.Add(this.textBox1);
+            this.panel2.Controls.Add(this.LogBox);
             this.panel2.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.panel2.Location = new System.Drawing.Point(0, 768);
             this.panel2.Name = "panel2";
             this.panel2.Size = new System.Drawing.Size(1601, 122);
             this.panel2.TabIndex = 5;
             // 
-            // groupBox3
+            // groupBox_Chart
             // 
-            this.groupBox3.Controls.Add(this.checkBox1);
-            this.groupBox3.Controls.Add(this.LegendBox);
-            this.groupBox3.Controls.Add(this.SetTitle_Btn);
-            this.groupBox3.Controls.Add(this.SetLegend2_Btn);
-            this.groupBox3.Controls.Add(this.SetLegend1_Btn);
-            this.groupBox3.Location = new System.Drawing.Point(728, 8);
-            this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(217, 111);
-            this.groupBox3.TabIndex = 22;
-            this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "Legends";
+            this.groupBox_Chart.Controls.Add(this.label2);
+            this.groupBox_Chart.Controls.Add(this.checkBox_YZero);
+            this.groupBox_Chart.Controls.Add(this.Theme_Box);
+            this.groupBox_Chart.Controls.Add(this.checkBox_IsLog);
+            this.groupBox_Chart.Enabled = false;
+            this.groupBox_Chart.Location = new System.Drawing.Point(473, 8);
+            this.groupBox_Chart.Name = "groupBox_Chart";
+            this.groupBox_Chart.Size = new System.Drawing.Size(203, 111);
+            this.groupBox_Chart.TabIndex = 23;
+            this.groupBox_Chart.TabStop = false;
+            this.groupBox_Chart.Text = "Chart";
+            // 
+            // checkBox_YZero
+            // 
+            this.checkBox_YZero.AutoSize = true;
+            this.checkBox_YZero.Location = new System.Drawing.Point(6, 88);
+            this.checkBox_YZero.Name = "checkBox_YZero";
+            this.checkBox_YZero.Size = new System.Drawing.Size(54, 17);
+            this.checkBox_YZero.TabIndex = 13;
+            this.checkBox_YZero.Text = "Y at 0";
+            this.checkBox_YZero.UseVisualStyleBackColor = true;
+            this.checkBox_YZero.CheckedChanged += new System.EventHandler(this.checkBox_YZero_CheckedChanged);
+            // 
+            // Theme_Box
+            // 
+            this.Theme_Box.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.Theme_Box.FormattingEnabled = true;
+            this.Theme_Box.Items.AddRange(new object[] {
+            "Dark",
+            "Light",
+            "Funky"});
+            this.Theme_Box.Location = new System.Drawing.Point(55, 22);
+            this.Theme_Box.Name = "Theme_Box";
+            this.Theme_Box.Size = new System.Drawing.Size(107, 21);
+            this.Theme_Box.TabIndex = 12;
+            this.Theme_Box.SelectedIndexChanged += new System.EventHandler(this.Theme_Box_SelectedIndexChanged);
+            // 
+            // checkBox_IsLog
+            // 
+            this.checkBox_IsLog.AutoSize = true;
+            this.checkBox_IsLog.Checked = true;
+            this.checkBox_IsLog.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBox_IsLog.Location = new System.Drawing.Point(6, 65);
+            this.checkBox_IsLog.Name = "checkBox_IsLog";
+            this.checkBox_IsLog.Size = new System.Drawing.Size(76, 17);
+            this.checkBox_IsLog.TabIndex = 0;
+            this.checkBox_IsLog.Text = "X Axis Log";
+            this.checkBox_IsLog.UseVisualStyleBackColor = true;
+            this.checkBox_IsLog.CheckedChanged += new System.EventHandler(this.checkBox_IsLog_CheckedChanged);
+            // 
+            // groupBox_Legends
+            // 
+            this.groupBox_Legends.Controls.Add(this.checkBox1);
+            this.groupBox_Legends.Controls.Add(this.LegendBox);
+            this.groupBox_Legends.Controls.Add(this.SetTitle_Btn);
+            this.groupBox_Legends.Controls.Add(this.SetLegend2_Btn);
+            this.groupBox_Legends.Controls.Add(this.SetLegend1_Btn);
+            this.groupBox_Legends.Enabled = false;
+            this.groupBox_Legends.Location = new System.Drawing.Point(898, 8);
+            this.groupBox_Legends.Name = "groupBox_Legends";
+            this.groupBox_Legends.Size = new System.Drawing.Size(217, 111);
+            this.groupBox_Legends.TabIndex = 22;
+            this.groupBox_Legends.TabStop = false;
+            this.groupBox_Legends.Text = "Legends";
             // 
             // checkBox1
             // 
@@ -265,21 +337,22 @@
             this.SetLegend1_Btn.UseVisualStyleBackColor = true;
             this.SetLegend1_Btn.Click += new System.EventHandler(this.SetLegend1_Btn_Click);
             // 
-            // groupBox2
+            // groupBox_Limits
             // 
-            this.groupBox2.Controls.Add(this.label1);
-            this.groupBox2.Controls.Add(this.CISPR_DetectorBox);
-            this.groupBox2.Location = new System.Drawing.Point(473, 8);
-            this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(249, 111);
-            this.groupBox2.TabIndex = 21;
-            this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "Limits";
+            this.groupBox_Limits.Controls.Add(this.label1);
+            this.groupBox_Limits.Controls.Add(this.CISPR_DetectorBox);
+            this.groupBox_Limits.Enabled = false;
+            this.groupBox_Limits.Location = new System.Drawing.Point(682, 8);
+            this.groupBox_Limits.Name = "groupBox_Limits";
+            this.groupBox_Limits.Size = new System.Drawing.Size(210, 111);
+            this.groupBox_Limits.TabIndex = 21;
+            this.groupBox_Limits.TabStop = false;
+            this.groupBox_Limits.Text = "Limits";
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(6, 22);
+            this.label1.Location = new System.Drawing.Point(6, 26);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(51, 13);
             this.label1.TabIndex = 11;
@@ -293,7 +366,7 @@
             this.CISPR_DetectorBox.Items.AddRange(new object[] {
             "Average",
             "Quasi-Peak"});
-            this.CISPR_DetectorBox.Location = new System.Drawing.Point(63, 17);
+            this.CISPR_DetectorBox.Location = new System.Drawing.Point(63, 22);
             this.CISPR_DetectorBox.Name = "CISPR_DetectorBox";
             this.CISPR_DetectorBox.Size = new System.Drawing.Size(100, 21);
             this.CISPR_DetectorBox.TabIndex = 10;
@@ -385,17 +458,14 @@
             this.openFileDialog1.Filter = "EMCEMI files (*.emcemi)|*.emcemi";
             this.openFileDialog1.RestoreDirectory = true;
             // 
-            // DragDropLabel
+            // label2
             // 
-            this.DragDropLabel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.DragDropLabel.Font = new System.Drawing.Font("Verdana", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.DragDropLabel.ForeColor = System.Drawing.SystemColors.ButtonShadow;
-            this.DragDropLabel.Location = new System.Drawing.Point(449, 317);
-            this.DragDropLabel.Name = "DragDropLabel";
-            this.DragDropLabel.Size = new System.Drawing.Size(690, 125);
-            this.DragDropLabel.TabIndex = 4;
-            this.DragDropLabel.Text = "Drag && Drop File Here";
-            this.DragDropLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(6, 25);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(43, 13);
+            this.label2.TabIndex = 12;
+            this.label2.Text = "Theme:";
             // 
             // Form1
             // 
@@ -419,10 +489,12 @@
             this.panel1.ResumeLayout(false);
             this.panel2.ResumeLayout(false);
             this.panel2.PerformLayout();
-            this.groupBox3.ResumeLayout(false);
-            this.groupBox3.PerformLayout();
-            this.groupBox2.ResumeLayout(false);
-            this.groupBox2.PerformLayout();
+            this.groupBox_Chart.ResumeLayout(false);
+            this.groupBox_Chart.PerformLayout();
+            this.groupBox_Legends.ResumeLayout(false);
+            this.groupBox_Legends.PerformLayout();
+            this.groupBox_Limits.ResumeLayout(false);
+            this.groupBox_Limits.PerformLayout();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.ResumeLayout(false);
@@ -434,7 +506,7 @@
 
         private System.Windows.Forms.StatusStrip statusStrip1;
         private System.Windows.Forms.ToolStripStatusLabel StatusLabel;
-        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.TextBox LogBox;
         private System.Windows.Forms.DataVisualization.Charting.Chart EMIChart;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Panel panel2;
@@ -449,14 +521,19 @@
         private System.Windows.Forms.TextBox Graph1PathBox;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.OpenFileDialog openFileDialog1;
-        private System.Windows.Forms.GroupBox groupBox3;
-        private System.Windows.Forms.GroupBox groupBox2;
+        private System.Windows.Forms.GroupBox groupBox_Legends;
+        private System.Windows.Forms.GroupBox groupBox_Limits;
         private System.Windows.Forms.TextBox LegendBox;
         private System.Windows.Forms.Button SetLegend2_Btn;
         private System.Windows.Forms.Button SetLegend1_Btn;
         private System.Windows.Forms.CheckBox checkBox1;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label DragDropLabel;
+        private System.Windows.Forms.GroupBox groupBox_Chart;
+        private System.Windows.Forms.ComboBox Theme_Box;
+        private System.Windows.Forms.CheckBox checkBox_IsLog;
+        private System.Windows.Forms.CheckBox checkBox_YZero;
+        private System.Windows.Forms.Label label2;
     }
 }
 

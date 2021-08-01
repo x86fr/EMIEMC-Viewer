@@ -17,6 +17,8 @@ namespace EMIEMC_Viewer
 {
     public partial class Form1 : Form
     {
+        IndvLimit CurLim = null;
+
         public Form1()
         {
             InitializeComponent();
@@ -24,7 +26,7 @@ namespace EMIEMC_Viewer
             Version appver = Assembly.GetExecutingAssembly().GetName().Version;
             this.Text += " " + appver.Major.ToString() + '.' + appver.Minor.ToString() + 'b';
 
-            Graph1PathBox.Text = @"D:\temp\TD 500 MESH\H500.emcemi";
+            //Graph1PathBox.Text = @"D:\temp\TD 500 MESH\H500.emcemi";
             //Process_EMCEMI_File();
         }
 
@@ -132,17 +134,14 @@ namespace EMIEMC_Viewer
 
                 if (PointX >= (currange + pkrange))
                 {
-                    AddLog("Actual range: " + currange / 1000000 + " MHz to " + (currange + pkrange) / 1000000 + " MHz");
-                    AddLog("Floor Log10 : " + Math.Floor(Math.Log10(PointX)));
+                    AddLog("Find Peaks for range: " + currange / 1000000 + " MHz to " + (currange + pkrange) / 1000000 + " MHz");
                     peaklist.Add(new Peaks(curpeakfreq, curpeakvalue, curpeakpoint));
                     curpeakfreq = 0;
                     curpeakvalue = 0;
                     curpeakpoint = 0;
                     currange += pkrange;
                     pkrange = Math.Pow(10, Math.Floor(Math.Log10(PointX))) / rangeperdecade;
-
                 }
-
 
                 pos++;
             }
@@ -164,8 +163,6 @@ namespace EMIEMC_Viewer
                         limID++;
                 }
 
-                // AddLog("Freq: " + cpk.freq + " - Limit Min: " + CISPRPt[limID].Y + " / Limit Max: " + CISPRPt[limID+1].Y);
-
                 // Check if limit slope is linear or not
                 if (CISPRPt[limID].Y == CISPRPt[limID + 1].Y)
                 {
@@ -175,14 +172,12 @@ namespace EMIEMC_Viewer
                 else
                 {
                     // Slope is non linear, must compute the actual limit value first
-                    double slope = (CISPRPt[limID + 1].Y - CISPRPt[limID].Y) / (CISPRPt[limID + 1].X - CISPRPt[limID].X);
-                    double org = CISPRPt[limID].Y - slope * CISPRPt[limID].X;
+                    double a = (CISPRPt[limID + 1].Y - CISPRPt[limID].Y) / (CISPRPt[limID + 1].X - CISPRPt[limID].X);
+                    double b = CISPRPt[limID].Y - a * CISPRPt[limID].X;
 
-                    double limitatPoint = slope * (cpk.freq / 1000000) + org;
+                    double limitatPoint = a * (cpk.freq / 1000000) + b;
 
                     cpk.margin = limitatPoint - cpk.value;
-
-                    //AddLog("NON LINEAR SLOPE! | Limit: " + limitatPoint);
                 }
 
             }
@@ -237,11 +232,140 @@ namespace EMIEMC_Viewer
 
         }
 
+        private void SetAxisLinLog()
+        {
+            double firstpoint = EMIChart.Series["EMI1"].Points[0].XValue;
+            double logMin = Math.Log10(firstpoint);
+
+            if (checkBox_IsLog.Checked)
+            {
+                EMIChart.ChartAreas[0].AxisX.IsLogarithmic = true;
+                EMIChart.ChartAreas[0].AxisX.LogarithmBase = 10;
+
+                EMIChart.ChartAreas[0].AxisX.MajorGrid.Enabled = true;
+                EMIChart.ChartAreas[0].AxisX.MajorGrid.Interval = 1;
+                EMIChart.ChartAreas[0].AxisX.MajorGrid.IntervalOffset = Math.Ceiling(logMin) - logMin;
+
+                EMIChart.ChartAreas[0].AxisX.MajorTickMark.Enabled = true;
+                EMIChart.ChartAreas[0].AxisX.MajorTickMark.Interval = 1;
+                EMIChart.ChartAreas[0].AxisX.MajorTickMark.IntervalOffset = EMIChart.ChartAreas[0].AxisX.MajorGrid.IntervalOffset;
+
+                EMIChart.ChartAreas[0].AxisX.MinorGrid.Enabled = true;
+                EMIChart.ChartAreas[0].AxisX.MinorGrid.Interval = 1;
+                EMIChart.ChartAreas[0].AxisX.MinorGrid.IntervalOffset = Math.Floor(logMin) - logMin;
+
+                EMIChart.ChartAreas[0].AxisX.MinorTickMark.Enabled = false;
+                EMIChart.ChartAreas[0].AxisX.MinorTickMark.Interval = 1;
+                EMIChart.ChartAreas[0].AxisX.MinorTickMark.IntervalOffset = EMIChart.ChartAreas[0].AxisX.MinorGrid.IntervalOffset;
+
+                EMIChart.ChartAreas[0].AxisX.LabelStyle.Interval = 1;
+
+                EMIChart.ChartAreas[0].AxisX.IsLabelAutoFit = false;
+
+                // Define Axis
+                EMIChart.ChartAreas[0].AxisX.Minimum = firstpoint;
+                EMIChart.ChartAreas[0].AxisX.Maximum = EMIChart.Series["EMI1"].Points[EMIChart.Series["EMI1"].Points.Count - 1].XValue;
+
+                // Draw Custom label
+                double spacer = 0.7d;
+                List<double> xs = CurLim.AxisLabelLogFreq;
+
+                for (int i = 0; i < xs.Count; i++)
+                {
+                    CustomLabel cl = new CustomLabel();
+
+                    if (xs[i] == 1 || xs[i] <= 0)
+                    {
+                        cl.FromPosition = -0.1f;
+                        cl.ToPosition = 0.1f;
+                    }
+                    else
+                    {
+                        cl.FromPosition = Math.Log10(xs[i] * spacer);
+                        cl.ToPosition = Math.Log10(xs[i] / spacer);
+                    }
+
+                    if (xs[i] >= 1000)
+                        cl.Text = (xs[i] / 1000).ToString("F2") + " GHz";
+                    else if (xs[i] < 1)
+                        cl.Text = (xs[i] * 1000).ToString("F0") + " kHz";
+                    else
+                        cl.Text = xs[i] + " MHz";
+
+                    EMIChart.ChartAreas[0].AxisX.CustomLabels.Add(cl);
+
+                }
+
+            }  else
+            {
+                double MidAx;
+                int StdInterval;
+
+                EMIChart.ChartAreas[0].AxisX.IsLogarithmic = false;
+
+                EMIChart.ChartAreas[0].AxisX.Minimum = firstpoint;
+                EMIChart.ChartAreas[0].AxisX.Maximum = EMIChart.Series["EMI1"].Points[EMIChart.Series["EMI1"].Points.Count - 1].XValue;
+
+                MidAx = (EMIChart.ChartAreas[0].AxisX.Minimum + EMIChart.ChartAreas[0].AxisX.Maximum) / 2;
+                StdInterval = (int)Math.Pow(10, Math.Floor(Math.Log10(MidAx)));
+
+                EMIChart.ChartAreas[0].AxisX.MajorGrid.Interval = StdInterval;
+                EMIChart.ChartAreas[0].AxisX.MajorGrid.IntervalOffset = 0 - firstpoint;
+
+                EMIChart.ChartAreas[0].AxisX.MajorTickMark.Interval = StdInterval;
+                EMIChart.ChartAreas[0].AxisX.MajorTickMark.IntervalOffset = 0 - firstpoint;
+
+                EMIChart.ChartAreas[0].AxisX.MinorGrid.Enabled = true;
+                EMIChart.ChartAreas[0].AxisX.MinorGrid.Interval = StdInterval / 5;
+                EMIChart.ChartAreas[0].AxisX.MinorGrid.IntervalOffset = 0 - firstpoint;
+
+                EMIChart.ChartAreas[0].AxisX.MinorTickMark.Enabled = false;
+
+                EMIChart.ChartAreas[0].AxisX.IsStartedFromZero = false;
+
+                EMIChart.ChartAreas[0].AxisX.CustomLabels.Clear();
+
+                EMIChart.ChartAreas[0].AxisX.LabelStyle.Interval = StdInterval;
+                EMIChart.ChartAreas[0].AxisX.LabelStyle.IntervalOffset = 0 - firstpoint;
+
+                EMIChart.ChartAreas[0].AxisX.LabelStyle.Format = "#0\" MHz\"";
+
+            }
+
+            SetYAxis();
+
+        }
+
+        private void SetYAxis()
+        {
+            // Compute Y Max
+            double MaxValRAW = EMIChart.Series["EMI1"].Points.FindMaxByValue().YValues[0];
+            double MaxLimRAW = EMIChart.Series["Limits1"].Points.FindMaxByValue().YValues[0];
+
+            double MaxVal = Math.Ceiling(MaxValRAW / 10) * 10;
+            double MaxLimVal = (Math.Ceiling(MaxLimRAW / 10) * 10);
+
+            if (MaxLimRAW % 10 == 0)
+                MaxLimVal += 10;
+
+            if (MaxVal > MaxLimVal)
+                EMIChart.ChartAreas[0].AxisY.Maximum = MaxVal;
+            else
+                EMIChart.ChartAreas[0].AxisY.Maximum = MaxLimVal;
+
+            // Compute Y Min
+            if (checkBox_YZero.Checked)
+                EMIChart.ChartAreas[0].AxisY.Minimum = 0;
+            else
+                EMIChart.ChartAreas[0].AxisY.Minimum = Math.Floor(EMIChart.Series["EMI1"].Points.FindMinByValue().YValues[0] / 10) * 10;
+
+        }
+
 
         private void ProcessMainGraph(RSAPersist EMIObj, string seriename = "EMI1")
         {
             int pos = 0, firstpoint;
-            double PointX, PointY, logMin;
+            double PointX, PointY;
             bool dbuVm = false;
 
             // 0 = PASS / 1 = FAIL WITHIN 6 dB / 2 = FAIL
@@ -255,6 +379,7 @@ namespace EMIEMC_Viewer
             EMILimits EMILimits = new EMILimits();
 
             EMIChart.Visible = true;
+            DragDropLabel.Visible = false;
 
             EMIChart.Series["EMI1"].Points.Clear();
             EMIChart.Series["EMI2"].Points.Clear();
@@ -262,6 +387,10 @@ namespace EMIEMC_Viewer
             EMIChart.Series["Limits2"].Points.Clear();
             Graph2PathBox.Text = "Graph #2";
             Graph1radioButton.Checked = true;
+
+            groupBox_Chart.Enabled = true;
+            groupBox_Legends.Enabled = true;
+            groupBox_Limits.Enabled = true;
 
             string YUnits = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.YUnits;
             string IntYUnits = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.InternalYUnits;
@@ -278,40 +407,10 @@ namespace EMIEMC_Viewer
             }
 
             firstpoint = int.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X[0]);
-            logMin = Math.Log10(firstpoint);
 
             AddLog("First Point: " + firstpoint.ToString() + " Hz");
 
-            DragDropLabel.Visible = false;
-            EMIChart.Visible = true;
-
-            EMIChart.ChartAreas[0].AxisX.Minimum = 0;
-            EMIChart.ChartAreas[0].AxisX.Maximum = 1000;
-
-            EMIChart.ChartAreas[0].AxisX.IsLogarithmic = true;
-            EMIChart.ChartAreas[0].AxisX.LogarithmBase = 10;
-
-            EMIChart.ChartAreas[0].AxisX.MajorGrid.Enabled = true;
-            EMIChart.ChartAreas[0].AxisX.MajorGrid.Interval = 1;
-            EMIChart.ChartAreas[0].AxisX.MajorGrid.IntervalOffset = Math.Ceiling(logMin) - logMin;
-
-            EMIChart.ChartAreas[0].AxisX.MajorTickMark.Enabled = true;
-            EMIChart.ChartAreas[0].AxisX.MajorTickMark.Interval = 1;
-            EMIChart.ChartAreas[0].AxisX.MajorTickMark.IntervalOffset = EMIChart.ChartAreas[0].AxisX.MajorGrid.IntervalOffset;
-
-            EMIChart.ChartAreas[0].AxisX.MinorGrid.Interval = 1;
-            EMIChart.ChartAreas[0].AxisX.MinorGrid.IntervalOffset = Math.Floor(logMin) - logMin;
-
-            EMIChart.ChartAreas[0].AxisX.MinorTickMark.Enabled = false;
-            EMIChart.ChartAreas[0].AxisX.MinorTickMark.Interval = 1;
-            EMIChart.ChartAreas[0].AxisX.MinorTickMark.IntervalOffset = EMIChart.ChartAreas[0].AxisX.MinorGrid.IntervalOffset;
-
-            EMIChart.ChartAreas[0].AxisX.LabelStyle.Interval = 1;
-
-            EMIChart.ChartAreas[0].AxisX.IsLabelAutoFit = false;
-
             // Find Limits
-            IndvLimit CurLim = null;
 
             // Special case for Conducted EMI
             if (firstpoint == 150000)
@@ -344,6 +443,7 @@ namespace EMIEMC_Viewer
             // Additionnal Graph Settings
             EMIChart.ChartAreas[0].AxisY.LabelStyle.Format = "#0\" " + CurLim.unit + "\"";
 
+            
             // Draw Limits
             foreach (PointF P in CurLim.freqLimits)
             {
@@ -351,42 +451,6 @@ namespace EMIEMC_Viewer
                 EMIChart.Series["Limits2"].Points.AddXY(P.X, P.Y - 6); // -6 dB Limit2
             }
 
-            // Define Axis
-            xs = CurLim.AxisFreq;
-            EMIChart.ChartAreas[0].AxisX.Minimum = CurLim.AxisXMin;
-            EMIChart.ChartAreas[0].AxisX.Maximum = CurLim.AxisXMax;
-            EMIChart.ChartAreas[0].AxisY.Minimum = CurLim.AxisYMin;
-            EMIChart.ChartAreas[0].AxisY.Maximum = CurLim.AxisYMax;
-
-            // Draw X labels
-            double spacer = 0.7d;
-
-            for (int i = 0; i < xs.Count; i++)
-            {
-                CustomLabel cl = new CustomLabel();
-
-                if (xs[i] == 1 || xs[i] <= 0)
-                {
-                    cl.FromPosition = -0.1f;
-                    cl.ToPosition = 0.1f;
-                }
-                else
-                {
-                    cl.FromPosition = Math.Log10(xs[i] * spacer);
-                    cl.ToPosition = Math.Log10(xs[i] / spacer);
-                }
-
-                if (xs[i] >= 1000)
-                    cl.Text = (xs[i] / 1000).ToString("F2") + " GHz";
-                else if (xs[i] < 1)
-                    cl.Text = (xs[i] * 1000).ToString("F0") + " kHz";
-                else
-                    cl.Text = xs[i] + " MHz";
-
-                EMIChart.ChartAreas[0].AxisX.CustomLabels.Add(cl);
-
-            }
-            
             // Draw Graph
             foreach (string X in EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X)
             {
@@ -401,8 +465,10 @@ namespace EMIEMC_Viewer
                     continue; 
 
                 EMIChart.Series[seriename].Points.AddXY(PointX, PointY);
-
             }
+
+            // Set Axis Lin or Log
+            SetAxisLinLog();
 
             // Find Peaks
             List<Peaks> Pk = FindPeaks(EMIObj, CurLim.freqLimits);
@@ -413,7 +479,7 @@ namespace EMIEMC_Viewer
             // Add Peak
             for (int pkloop = 0; pkloop < pkpoints; pkloop++)
             {
-                pkstr += "Peak #" + (pkloop+1) + " : " + Pk[pkloop].value.ToString("F2") + " dBµV/m @ " + (Pk[pkloop].freq / 1000000).ToString("F3") + " MHz (margin: " + Pk[pkloop].margin.ToString("F2") + ")" + Environment.NewLine;
+                pkstr += "Peak #" + (pkloop+1) + " : " + Pk[pkloop].value.ToString("F2") + " " + CurLim.unit + " @ " + (Pk[pkloop].freq / 1000000).ToString("F3") + " MHz (margin: " + Pk[pkloop].margin.ToString("F2") + ")" + Environment.NewLine;
 
                 TextAnnotation TA_Peak = new TextAnnotation();
                 TA_Peak.ForeColor = Color.White;
@@ -422,13 +488,6 @@ namespace EMIEMC_Viewer
                     TA_Peak.Text = "Peak #1 (Max)";
                 else
                     TA_Peak.Text = "Peak #" + (pkloop + 1);
-
-
-                if(pkloop == 0 && Pk[pkloop].value > 50 && firstpoint == 30000000)
-                {
-                    EMIChart.ChartAreas[0].AxisY.Minimum += 10;
-                    EMIChart.ChartAreas[0].AxisY.Maximum += 10;
-                }
 
                 if (Pk[pkloop].margin < 0)
                     status = 2;
@@ -458,6 +517,7 @@ namespace EMIEMC_Viewer
             TA_Status.AnchorY = 15;
             TA_Status.AllowMoving = true;
             TA_Status.ForeColor = Color.Black;
+            TA_Status.Name = "Status";
 
             switch (status)
             {
@@ -494,14 +554,17 @@ namespace EMIEMC_Viewer
             EMIChart.Series["EMI1"].LegendText = Graph1PathBox.Text.Substring(Graph1PathBox.Text.LastIndexOf(@"\") + 1);
             LegendBox.Text = EMIChart.Series["EMI1"].LegendText;
             EMIChart.Series["EMI2"].IsVisibleInLegend = false;
+
+            // Set Theme
+            SetGraphTheme();
         }
 
         private void AddLog(string log, bool noCRLF = false)
         {
             if (noCRLF)
-                textBox1.AppendText(log);
+                LogBox.AppendText(log);
             else
-                textBox1.AppendText(log + Environment.NewLine);
+                LogBox.AppendText(log + Environment.NewLine);
         }
 
         private void SaveGraphBtn_Click(object sender, EventArgs e)
@@ -561,9 +624,10 @@ namespace EMIEMC_Viewer
                     Graph1PathBox.Text = openFileDialog1.FileName;
                 else
                     Graph2PathBox.Text = openFileDialog1.FileName;
+
+                Process_EMCEMI_File();
             }
 
-            Process_EMCEMI_File();
         }
 
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
@@ -581,6 +645,113 @@ namespace EMIEMC_Viewer
             EMIChart.Series["EMI2"].LegendText = LegendBox.Text;
         }
 
+        private void checkBox_IsLog_CheckedChanged(object sender, EventArgs e)
+        {
+            SetAxisLinLog();
+        }
+
+        private void checkBox_YZero_CheckedChanged(object sender, EventArgs e)
+        {
+            SetYAxis();
+        }
+
+        private void Theme_Box_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            SetGraphTheme();
+        }
+
+        private void SetGraphTheme()
+        {
+            switch(Theme_Box.SelectedItem)
+            {
+                default:
+                case "Dark":
+                    Theme_Box.SelectedItem = "Dark";
+                    EMIChart.ChartAreas[0].BackColor = Color.Black;
+                    EMIChart.BackColor = Color.Black;
+
+                    EMIChart.Series["EMI1"].BorderColor = Color.White;
+                    EMIChart.Series["EMI1"].Color = Color.Yellow;
+                    EMIChart.Series["EMI1"].LabelForeColor = Color.White;
+
+                    EMIChart.Series["EMI2"].Color = Color.Aqua;
+
+                    EMIChart.Series["Limits1"].Color = Color.Salmon;
+                    EMIChart.Series["Limits2"].Color = Color.Salmon;
+
+                    EMIChart.ChartAreas[0].AxisX.LabelStyle.ForeColor = Color.White;
+                    EMIChart.ChartAreas[0].AxisX.LineColor = Color.White;
+                    EMIChart.ChartAreas[0].AxisX.MajorGrid.LineColor = Color.Gray;
+                    EMIChart.ChartAreas[0].AxisX.MinorGrid.LineColor = Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+                    EMIChart.ChartAreas[0].AxisX.MinorTickMark.LineColor = Color.White; 
+                    EMIChart.ChartAreas[0].AxisX.MajorTickMark.LineColor = Color.White;
+                    EMIChart.ChartAreas[0].AxisX.TitleForeColor = Color.White;
+                    EMIChart.ChartAreas[0].AxisY.LabelStyle.ForeColor = Color.White;
+                    EMIChart.ChartAreas[0].AxisY.LineColor = Color.White;
+                    EMIChart.ChartAreas[0].AxisY.MajorGrid.LineColor = Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+                    EMIChart.ChartAreas[0].AxisY.MajorTickMark.LineColor = Color.White;
+
+                    EMIChart.ChartAreas[0].AxisY.TitleForeColor = Color.White;
+
+                    EMIChart.Legends[0].BackColor = Color.Black;
+                    EMIChart.Legends[0].BorderColor = Color.Gainsboro;
+                    EMIChart.Legends[0].ForeColor = Color.White;
+                    EMIChart.Legends[0].InterlacedRowsColor = Color.White;
+                    EMIChart.Legends[0].TitleForeColor = Color.White;
+
+                    foreach (Annotation A in EMIChart.Annotations)
+                    {
+                        if(A.Name != "Status")
+                            A.ForeColor = Color.White;
+                    }
+
+                    break;
+                case "Light":
+                    EMIChart.ChartAreas[0].BackColor = Color.White;
+                    EMIChart.BackColor = Color.White;
+
+                    EMIChart.Series["EMI1"].BorderColor = Color.White;
+                    EMIChart.Series["EMI1"].Color = Color.DeepSkyBlue;
+                    EMIChart.Series["EMI1"].LabelForeColor = Color.Black;
+
+                    EMIChart.Series["EMI2"].Color = Color.SkyBlue;
+
+                    EMIChart.Series["Limits1"].Color = Color.Red;
+                    EMIChart.Series["Limits2"].Color = Color.Red;
+
+                    EMIChart.ChartAreas[0].AxisX.LabelStyle.ForeColor = Color.Black;
+                    EMIChart.ChartAreas[0].AxisX.LineColor = Color.Black;
+                    EMIChart.ChartAreas[0].AxisX.MajorGrid.LineColor = Color.Gray;
+                    EMIChart.ChartAreas[0].AxisX.MinorGrid.LineColor = Color.LightGray;
+                    EMIChart.ChartAreas[0].AxisX.MinorTickMark.LineColor = Color.Black;
+                    EMIChart.ChartAreas[0].AxisX.MajorTickMark.LineColor = Color.Black;
+                    EMIChart.ChartAreas[0].AxisX.TitleForeColor = Color.Black;
+                    EMIChart.ChartAreas[0].AxisY.LabelStyle.ForeColor = Color.Black;
+                    EMIChart.ChartAreas[0].AxisY.LineColor = Color.Black;
+                    EMIChart.ChartAreas[0].AxisY.MajorGrid.LineColor = Color.DarkGray;
+                    EMIChart.ChartAreas[0].AxisY.MajorTickMark.LineColor = Color.Black;
+
+                    EMIChart.ChartAreas[0].AxisY.TitleForeColor = Color.Black;
+
+                    EMIChart.Legends[0].BackColor = Color.White;
+                    EMIChart.Legends[0].BorderColor = Color.Gainsboro;
+                    EMIChart.Legends[0].ForeColor = Color.Black;
+                    EMIChart.Legends[0].InterlacedRowsColor = Color.Black;
+                    EMIChart.Legends[0].TitleForeColor = Color.Black;
+
+                    foreach (Annotation A in EMIChart.Annotations)
+                    {
+                        if (A.Name != "Status")
+                            A.ForeColor = Color.Black;
+                    }
+
+                    break;
+
+
+            }
+
+
+        }
 
         // Input Box Functions
         public static DialogResult InputBox(string title, string promptText, ref string value)
@@ -625,6 +796,7 @@ namespace EMIEMC_Viewer
 
             return dialogResult;
         }
+
 
     }
 }
