@@ -391,6 +391,7 @@ namespace EMIEMC_Viewer
             groupBox_Chart.Enabled = true;
             groupBox_Legends.Enabled = true;
             groupBox_Limits.Enabled = true;
+            checkBox_ForceFail.Checked = false;
 
             string YUnits = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.YUnits;
             string IntYUnits = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.InternalYUnits;
@@ -797,6 +798,13 @@ namespace EMIEMC_Viewer
             return dialogResult;
         }
 
-
+        private void checkBox_ForceFail_CheckedChanged(object sender, EventArgs e)
+        {
+            if(checkBox_ForceFail.Checked)
+            {
+                (EMIChart.Annotations["Status"] as TextAnnotation).Text = "FAIL";
+                EMIChart.Annotations["Status"].BackColor = Color.Red;
+            }
+        }
     }
 }

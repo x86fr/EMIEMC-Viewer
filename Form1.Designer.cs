@@ -44,6 +44,7 @@
             this.DragDropLabel = new System.Windows.Forms.Label();
             this.panel2 = new System.Windows.Forms.Panel();
             this.groupBox_Chart = new System.Windows.Forms.GroupBox();
+            this.label2 = new System.Windows.Forms.Label();
             this.checkBox_YZero = new System.Windows.Forms.CheckBox();
             this.Theme_Box = new System.Windows.Forms.ComboBox();
             this.checkBox_IsLog = new System.Windows.Forms.CheckBox();
@@ -65,7 +66,7 @@
             this.SaveGraphBtn2 = new System.Windows.Forms.Button();
             this.SaveGraphBtn = new System.Windows.Forms.Button();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.label2 = new System.Windows.Forms.Label();
+            this.checkBox_ForceFail = new System.Windows.Forms.CheckBox();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.EMIChart)).BeginInit();
             this.panel1.SuspendLayout();
@@ -235,6 +236,15 @@
             this.groupBox_Chart.TabStop = false;
             this.groupBox_Chart.Text = "Chart";
             // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(6, 25);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(43, 13);
+            this.label2.TabIndex = 12;
+            this.label2.Text = "Theme:";
+            // 
             // checkBox_YZero
             // 
             this.checkBox_YZero.AutoSize = true;
@@ -339,6 +349,7 @@
             // 
             // groupBox_Limits
             // 
+            this.groupBox_Limits.Controls.Add(this.checkBox_ForceFail);
             this.groupBox_Limits.Controls.Add(this.label1);
             this.groupBox_Limits.Controls.Add(this.CISPR_DetectorBox);
             this.groupBox_Limits.Enabled = false;
@@ -458,14 +469,16 @@
             this.openFileDialog1.Filter = "EMCEMI files (*.emcemi)|*.emcemi";
             this.openFileDialog1.RestoreDirectory = true;
             // 
-            // label2
+            // checkBox_ForceFail
             // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(6, 25);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(43, 13);
-            this.label2.TabIndex = 12;
-            this.label2.Text = "Theme:";
+            this.checkBox_ForceFail.AutoSize = true;
+            this.checkBox_ForceFail.Location = new System.Drawing.Point(9, 88);
+            this.checkBox_ForceFail.Name = "checkBox_ForceFail";
+            this.checkBox_ForceFail.Size = new System.Drawing.Size(72, 17);
+            this.checkBox_ForceFail.TabIndex = 14;
+            this.checkBox_ForceFail.Text = "Force Fail";
+            this.checkBox_ForceFail.UseVisualStyleBackColor = true;
+            this.checkBox_ForceFail.CheckedChanged += new System.EventHandler(this.checkBox_ForceFail_CheckedChanged);
             // 
             // Form1
             // 
@@ -534,6 +547,7 @@
         private System.Windows.Forms.CheckBox checkBox_IsLog;
         private System.Windows.Forms.CheckBox checkBox_YZero;
         private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.CheckBox checkBox_ForceFail;
     }
 }
 
