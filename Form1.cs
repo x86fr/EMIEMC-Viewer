@@ -12,6 +12,7 @@ using System.Xml.Serialization;
 using System.Xml;
 using System.Windows.Forms.DataVisualization.Charting;
 using System.Reflection;
+using System.Globalization;
 
 namespace EMIEMC_Viewer
 {
@@ -99,8 +100,8 @@ namespace EMIEMC_Viewer
             var peaklist = new List<Peaks>();
 
             // Find Freq range for peak detection
-            lowfreq = double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X[0]);
-            highfreq = double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X[EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X.Count - 1]);
+            lowfreq = double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X[0], CultureInfo.InvariantCulture);
+            highfreq = double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X[EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X.Count - 1], CultureInfo.InvariantCulture);
             currange = lowfreq;
 
             AddLog("Low Freq: " + lowfreq / 1000000 + " MHz");
@@ -111,11 +112,11 @@ namespace EMIEMC_Viewer
             double[] Yvalues;
 
             if (EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.YUnits == "dBm")
-                Yvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y.Select(x => double.Parse(x) + 107).ToArray();
+                Yvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y.Select(x => double.Parse(x, CultureInfo.InvariantCulture) + 107).ToArray();
             else
-                Yvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y.Select(x => double.Parse(x)).ToArray();
+                Yvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y.Select(x => double.Parse(x, CultureInfo.InvariantCulture)).ToArray();
 
-            Xvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X.Select(x => double.Parse(x)).ToArray();
+            Xvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X.Select(x => double.Parse(x, CultureInfo.InvariantCulture)).ToArray();
 
             pkrange = Math.Pow(10, Math.Floor(Math.Log10(lowfreq))) / rangeperdecade;
 
@@ -213,8 +214,8 @@ namespace EMIEMC_Viewer
             foreach (string X in EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X)
             {
                 // Draw Point
-                PointX = Double.Parse(X) / 1000000;
-                PointY = Double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y[pos]);
+                PointX = Double.Parse(X, CultureInfo.InvariantCulture) / 1000000;
+                PointY = Double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y[pos], CultureInfo.InvariantCulture);
                 if (dbuVm) { PointY += 107; }
 
                 pos++;
@@ -455,8 +456,8 @@ namespace EMIEMC_Viewer
             foreach (string X in EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X)
             {
                 // Draw Point
-                PointX = Double.Parse(X) / 1000000;
-                PointY = Double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y[pos]);
+                PointX = Double.Parse(X, CultureInfo.InvariantCulture) / 1000000;
+                PointY = Double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y[pos], CultureInfo.InvariantCulture);
                 if(dbuVm) { PointY += 107; }
 
                 pos++;
