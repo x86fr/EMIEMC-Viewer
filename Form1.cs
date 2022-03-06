@@ -27,8 +27,6 @@ namespace EMIEMC_Viewer
             Version appver = Assembly.GetExecutingAssembly().GetName().Version;
             this.Text += " " + appver.Major.ToString() + '.' + appver.Minor.ToString() + 'b';
 
-            //Graph1PathBox.Text = @"D:\temp\TD 500 MESH\H500.emcemi";
-            //Process_EMCEMI_File();
         }
 
         private void Form1_DragEnter(object sender, DragEventArgs e)
