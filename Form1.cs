@@ -19,11 +19,15 @@ namespace EMIEMC_Viewer
     public partial class Form1 : Form
     {
         IndvLimit CurLim = null;
+        EmiMeasurement CurMeasurement = null;     // file shown as Graph #1
+        Detector CurDetector = Detector.Undefined; // detector of the Graph #1 trace
+        bool UpdatingDetectorBox = false;
 
         public Form1()
         {
             InitializeComponent();
-            
+            EMIChart.Resize += (s, e) => PlacePeakList();
+
             Version appver = Assembly.GetExecutingAssembly().GetName().Version;
             this.Text += " " + appver.Major.ToString() + '.' + appver.Minor.ToString() + 'b';
 
@@ -55,38 +59,36 @@ namespace EMIEMC_Viewer
 
             string currentfile = (Graph1radioButton.Checked) ? Graph1PathBox.Text : Graph2PathBox.Text;
 
-            XmlSerializer xmlSerializer = new XmlSerializer(typeof(RSAPersist));
-            FileStream fs = new FileStream(currentfile, FileMode.Open);
-            XmlReader reader = XmlReader.Create(fs);
-
-            RSAPersist RSAObj = new RSAPersist();
+            EmiMeasurement EMIObj;
 
             try
             {
-
-                RSAObj = (RSAPersist)xmlSerializer.Deserialize(reader);
+                EMIObj = MeasurementLoader.Load(currentfile);
 
                 StatusLabel.Text = "File: " + currentfile;
-                AddLog("File Read OK: " + currentfile);
+                AddLog("File Read OK: " + currentfile + " (" + EMIObj.SourceFormat + ")");
 
+                foreach (string info in EMIObj.Info)
+                    AddLog(info);
             }
             catch (Exception ex)
             {
                 AddLog("Unable to read file: " + ex.Message);
-
+                return;
             }
 
-            fs.Close();
-
             if (Graph1radioButton.Checked)
-                ProcessMainGraph(RSAObj);
+            {
+                CurMeasurement = EMIObj;
+                ProcessMainGraph(EMIObj);
+            }
             else
-                AddGraph(RSAObj);
+                AddGraph(EMIObj);
 
         }
 
 
-        private List<Peaks> FindPeaks(RSAPersist EMIObj, PointF[] CISPRPt)
+        private List<Peaks> FindPeaks(EmiTrace trace, PointF[] CISPRPt)
         {
             double lowfreq, highfreq, pkrange, currange, curpeakvalue = -200, curpeakfreq = 0;
             int curpeakpoint = 0;
@@ -98,23 +100,16 @@ namespace EMIEMC_Viewer
             var peaklist = new List<Peaks>();
 
             // Find Freq range for peak detection
-            lowfreq = double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X[0], CultureInfo.InvariantCulture);
-            highfreq = double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X[EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X.Count - 1], CultureInfo.InvariantCulture);
+            lowfreq = trace.FreqHz[0];
+            highfreq = trace.FreqHz[trace.FreqHz.Length - 1];
             currange = lowfreq;
 
             AddLog("Low Freq: " + lowfreq / 1000000 + " MHz");
             AddLog("High Freq: " + highfreq / 1000000 + " MHz");
             //AddLog("Peak Seach Range: " + pkrange / 1000000 + " MHz");
 
-            double[] Xvalues;
-            double[] Yvalues;
-
-            if (EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.YUnits == "dBm")
-                Yvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y.Select(x => double.Parse(x, CultureInfo.InvariantCulture) + 107).ToArray();
-            else
-                Yvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y.Select(x => double.Parse(x, CultureInfo.InvariantCulture)).ToArray();
-
-            Xvalues = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X.Select(x => double.Parse(x, CultureInfo.InvariantCulture)).ToArray();
+            double[] Xvalues = trace.FreqHz;
+            double[] Yvalues = trace.Level;
 
             pkrange = Math.Pow(10, Math.Floor(Math.Log10(lowfreq))) / rangeperdecade;
 
@@ -147,39 +142,7 @@ namespace EMIEMC_Viewer
 
             // Compute Margin against CISPR Limit provided
             foreach(Peaks cpk in peaklist)
-            {
-                int limID = 0;
-
-                // Get low & high limit range
-                foreach (PointF cdp in CISPRPt)
-                {
-                    if ((cdp.X * 1000000) >= cpk.freq)
-                    {
-                        limID--;
-                        break;
-                    }
-                    else
-                        limID++;
-                }
-
-                // Check if limit slope is linear or not
-                if (CISPRPt[limID].Y == CISPRPt[limID + 1].Y)
-                {
-                    // Slope is linear, just compute margin
-                    cpk.margin = CISPRPt[limID].Y - cpk.value;
-                }
-                else
-                {
-                    // Slope is non linear, must compute the actual limit value first
-                    double a = (CISPRPt[limID + 1].Y - CISPRPt[limID].Y) / (CISPRPt[limID + 1].X - CISPRPt[limID].X);
-                    double b = CISPRPt[limID].Y - a * CISPRPt[limID].X;
-
-                    double limitatPoint = a * (cpk.freq / 1000000) + b;
-
-                    cpk.margin = limitatPoint - cpk.value;
-                }
-
-            }
+                cpk.margin = LimitMath.LevelAt(CISPRPt, cpk.freq / 1000000) - cpk.value;
 
             // Sort By Peak Value
             peaklist = peaklist.OrderBy(o => o.margin).ToList();
@@ -188,19 +151,17 @@ namespace EMIEMC_Viewer
 
         }
 
-        private void AddGraph(RSAPersist EMIObj, string seriename = "EMI2")
+        private void AddGraph(EmiMeasurement EMIObj, string seriename = "EMI2")
         {
-            int pos = 0;
-            double PointX, PointY;
-            string YUnits = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.YUnits;
-            bool dbuVm = (YUnits == "dBm") ? true : false;
+            // Same detector as Graph1 when the file holds several traces
+            EmiTrace trace = EMIObj.Traces.FirstOrDefault(t => t.Detector == CurDetector) ?? EMIObj.Traces[0];
 
             // If Graph1 not set, cancel
             if (EMIChart.Series["EMI1"].Points.Count < 10)
                 return;
 
             // If Graph1 doesn't have same scale than new Graph, cancel
-            if((EMIChart.Series["EMI1"].Points[0].XValue * 1000000) != int.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X[0]))
+            if (Math.Abs(EMIChart.Series["EMI1"].Points[0].XValue - trace.FreqHz[0] / 1000000) > 0.000001)
             {
                 MessageBox.Show("Both graph don't share the same range", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
@@ -209,21 +170,8 @@ namespace EMIEMC_Viewer
             EMIChart.Series[seriename].Points.Clear();
 
             // Draw Graph
-            foreach (string X in EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X)
-            {
-                // Draw Point
-                PointX = Double.Parse(X, CultureInfo.InvariantCulture) / 1000000;
-                PointY = Double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y[pos], CultureInfo.InvariantCulture);
-                if (dbuVm) { PointY += 107; }
-
-                pos++;
-
-                if (PointX > 10000 || PointY > 10000)
-                    continue;
-
-                EMIChart.Series[seriename].Points.AddXY(PointX, PointY);
-
-            }
+            for (int pos = 0; pos < trace.FreqHz.Length; pos++)
+                EMIChart.Series[seriename].Points.AddXY(trace.FreqHz[pos] / 1000000, trace.Level[pos]);
 
             // Add Legend
             EMIChart.Series["EMI2"].IsVisibleInLegend = true;
@@ -266,6 +214,7 @@ namespace EMIEMC_Viewer
                 EMIChart.ChartAreas[0].AxisX.Maximum = EMIChart.Series["EMI1"].Points[EMIChart.Series["EMI1"].Points.Count - 1].XValue;
 
                 // Draw Custom label
+                EMIChart.ChartAreas[0].AxisX.CustomLabels.Clear();
                 double spacer = 0.7d;
                 List<double> xs = CurLim.AxisLabelLogFreq;
 
@@ -358,22 +307,46 @@ namespace EMIEMC_Viewer
             else
                 EMIChart.ChartAreas[0].AxisY.Minimum = Math.Floor(EMIChart.Series["EMI1"].Points.FindMinByValue().YValues[0] / 10) * 10;
 
+            PlacePeakList();
+        }
+
+        // Pin the peak list's bottom-right corner to the plot area's bottom-right corner (axis coordinates),
+        // so it follows the plot on resize and axis changes instead of a percentage of the whole control
+        private void PlacePeakList()
+        {
+            TextAnnotation PkListAnnot = EMIChart.Annotations.FindByName("PeakList") as TextAnnotation;
+            if (PkListAnnot == null || EMIChart.Width == 0 || EMIChart.Height == 0)
+                return;
+
+            ChartArea ca = EMIChart.ChartAreas[0];
+
+            PkListAnnot.AxisX = ca.AxisX;
+            PkListAnnot.AxisY = ca.AxisY;
+            PkListAnnot.AnchorX = ca.AxisX.Maximum;
+            PkListAnnot.AnchorY = ca.AxisY.Minimum;
+            PkListAnnot.AnchorAlignment = ContentAlignment.BottomRight;
+
+            // Size is a percentage of the chart: the chart's own auto size goes stale on resize (text drifts,
+            // wraps or gets cut), so measure the text in pixels against the current chart size
+            using (Graphics g = EMIChart.CreateGraphics())
+            {
+                SizeF size = g.MeasureString(PkListAnnot.Text, PkListAnnot.Font);
+                PkListAnnot.Width = (size.Width + 6) * 100 / EMIChart.Width;
+                PkListAnnot.Height = (size.Height + 4) * 100 / EMIChart.Height;
+            }
         }
 
 
-        private void ProcessMainGraph(RSAPersist EMIObj, string seriename = "EMI1")
+        // keepDetector: re-render after a CISPR_DetectorBox change, honour the box instead of the file defaults
+        private void ProcessMainGraph(EmiMeasurement EMIObj, bool keepDetector = false, string seriename = "EMI1")
         {
-            int pos = 0, firstpoint;
-            double PointX, PointY;
-            bool dbuVm = false;
+            int firstpoint;
 
             // 0 = PASS / 1 = FAIL WITHIN 6 dB / 2 = FAIL
             int status = 0;
             string pkstr = "";
 
             int pkpoints = 6;
-
-            List<double> xs = new List<double>();
 
             EMILimits EMILimits = new EMILimits();
 
@@ -392,45 +365,72 @@ namespace EMIEMC_Viewer
             groupBox_Limits.Enabled = true;
             checkBox_ForceFail.Checked = false;
 
-            string YUnits = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.YUnits;
-            string IntYUnits = EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.InternalYUnits;
+            // Select trace (TeraScan conducted suite: QP + AVG traces, picked with the detector box)
+            EmiTrace trace = EMIObj.Traces[0];
+            bool multiTrace = EMIObj.Traces.Count > 1;
 
-            AddLog("YUnits: " + YUnits);
-            AddLog("InternalYUnits: " + IntYUnits);
+            if (multiTrace)
+            {
+                bool wantQP = keepDetector ? CISPR_DetectorBox.SelectedIndex == 1 : EMIObj.Traces.Any(t => t.Detector == Detector.QPeak);
+                trace = EMIObj.Traces.FirstOrDefault(t => t.Detector == (wantQP ? Detector.QPeak : Detector.Average)) ?? EMIObj.Traces[0];
+                SetDetectorBox(trace.Detector == Detector.QPeak ? 1 : 0);
+                AddLog("Selected trace: " + trace.Label);
+            }
 
-            if (YUnits == "dBm") {
-                AddLog(" - dBm converted to dBuV/m");
-                dbuVm = true;
-            }  else if (YUnits != "dBuVPerMeter" && YUnits != "dBuV") {
-                AddLog(" Raw Unit not supported!");
+            CISPR_DetectorBox.Enabled = multiTrace;
+            CurDetector = trace.Detector;
+
+            if (trace.FreqHz.Length < 2)
+            {
+                AddLog("Trace has no usable points");
                 return;
             }
 
-            firstpoint = int.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X[0]);
+            firstpoint = (int)Math.Round(trace.FreqHz[0]);
 
             AddLog("First Point: " + firstpoint.ToString() + " Hz");
 
             // Find Limits
 
-            // Special case for Conducted EMI
-            if (firstpoint == 150000)
+            // Limit line stored in the file (TeraScan): same detector as the trace first
+            EmiLimitLine fileLimit = EMIObj.Limits.FirstOrDefault(l => l.Detector == trace.Detector)
+                                  ?? EMIObj.Limits.FirstOrDefault(l => l.Detector == Detector.Undefined)
+                                  ?? EMIObj.Limits.FirstOrDefault();
+
+            if (fileLimit != null)
             {
-                if (Graph1PathBox.Text.Contains("QP", StringComparison.OrdinalIgnoreCase))
+                IndvLimit builtin = EMILimits.LimitList.Find(x => x.startfreq == firstpoint);
+
+                CurLim = new IndvLimit()
                 {
-                    CurLim = EMILimits.LimitList.Find(x => x.startfreq == firstpoint && x.detector == Detector.QPeak);
-                    CISPR_DetectorBox.SelectedIndex = 1;
-                }
+                    name = fileLimit.Name,
+                    unit = trace.Unit,
+                    detector = fileLimit.Detector,
+                    startfreq = firstpoint,
+                    freqLimits = fileLimit.Points,
+                    AxisLabelLogFreq = (builtin != null) ? builtin.AxisLabelLogFreq
+                                     : LogAxisLabels(trace.FreqHz[0] / 1000000, trace.FreqHz[trace.FreqHz.Length - 1] / 1000000)
+                };
+            }
+            // Special case for Conducted EMI
+            else if (firstpoint == 150000)
+            {
+                bool isQP;
+
+                if (keepDetector)
+                    isQP = CISPR_DetectorBox.SelectedIndex == 1;
+                else if (EMIObj.SourceFormat == EmiMeasurement.Tektronix)
+                    isQP = Graph1PathBox.Text.Contains("QP", StringComparison.OrdinalIgnoreCase);
                 else
-                {
-                    CurLim = EMILimits.LimitList.Find(x => x.startfreq == firstpoint && x.detector == Detector.Average);
-                    CISPR_DetectorBox.SelectedIndex = 0;
-                }
+                    isQP = trace.Detector == Detector.QPeak;
+
+                CurLim = EMILimits.LimitList.Find(x => x.startfreq == firstpoint && x.detector == (isQP ? Detector.QPeak : Detector.Average));
+                SetDetectorBox(isQP ? 1 : 0);
                 CISPR_DetectorBox.Enabled = true;
             }
             else
             {
                 CurLim = EMILimits.LimitList.Find(x => x.startfreq == firstpoint);
-                CISPR_DetectorBox.Enabled = false;
             }
 
             if (CurLim != null) {
@@ -448,38 +448,52 @@ namespace EMIEMC_Viewer
             foreach (PointF P in CurLim.freqLimits)
             {
                 EMIChart.Series["Limits1"].Points.AddXY(P.X, P.Y);
-                EMIChart.Series["Limits2"].Points.AddXY(P.X, P.Y - 6); // -6 dB Limit2
+                if (EMIObj.MarginLineEnabled)
+                    EMIChart.Series["Limits2"].Points.AddXY(P.X, P.Y + EMIObj.MarginOffsetDb); // -6 dB Limit2
             }
 
             // Draw Graph
-            foreach (string X in EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.X)
-            {
-                // Draw Point
-                PointX = Double.Parse(X, CultureInfo.InvariantCulture) / 1000000;
-                PointY = Double.Parse(EMIObj.Internal.Composite.Items.Composite[1].Items.Waveform.Y[pos], CultureInfo.InvariantCulture);
-                if(dbuVm) { PointY += 107; }
-
-                pos++;
-
-                if(PointX > 10000 || PointY > 10000)
-                    continue; 
-
-                EMIChart.Series[seriename].Points.AddXY(PointX, PointY);
-            }
+            for (int pos = 0; pos < trace.FreqHz.Length; pos++)
+                EMIChart.Series[seriename].Points.AddXY(trace.FreqHz[pos] / 1000000, trace.Level[pos]);
 
             // Set Axis Lin or Log
             SetAxisLinLog();
 
-            // Find Peaks
-            List<Peaks> Pk = FindPeaks(EMIObj, CurLim.freqLimits);
+            // Find Peaks: TeraScan peak list when stored in the file, otherwise detect them on the trace
+            List<EmiPeak> Pk;
+
+            if (EMIObj.Peaks.Count > 0)
+            {
+                // File order is TeraScan's ranking (worst margin first): keep the same 6 as the viewer's own search
+                Pk = EMIObj.Peaks.Where(p => !multiTrace || p.Detector == Detector.Undefined || p.Detector == trace.Detector).ToList();
+                AddLog("Peaks from file: " + Pk.Count + (Pk.Count > pkpoints ? " (first " + pkpoints + " shown)" : ""));
+                Pk = Pk.Take(pkpoints).ToList();
+            }
+            else
+            {
+                Pk = FindPeaks(trace, CurLim.freqLimits).Take(pkpoints)
+                        .Select(p => new EmiPeak() { FreqHz = p.freq, Level = p.value, LimitDb = p.value + p.margin }).ToList();
+            }
 
             // Draw Annotations
             EMIChart.Annotations.Clear();
 
             // Add Peak
-            for (int pkloop = 0; pkloop < pkpoints; pkloop++)
+            for (int pkloop = 0; pkloop < Pk.Count; pkloop++)
             {
-                pkstr += "Peak #" + (pkloop+1) + " : " + Pk[pkloop].value.ToString("F2") + " " + CurLim.unit + " @ " + (Pk[pkloop].freq / 1000000).ToString("F3") + " MHz (margin: " + Pk[pkloop].margin.ToString("F2") + ")" + Environment.NewLine;
+                EmiPeak cpk = Pk[pkloop];
+                double? margin = PeakMargin(cpk);
+
+                pkstr += "Peak #" + (pkloop + 1) + " : " + cpk.Level.ToString("F2") + " " + CurLim.unit + " @ " + (cpk.FreqHz / 1000000).ToString("F3") + " MHz";
+                if (cpk.QpLevel.HasValue)
+                    pkstr += " QP " + cpk.QpLevel.Value.ToString("F2");
+                pkstr += " (margin: " + (margin.HasValue ? margin.Value.ToString("F2") : "n/a") + ")";
+
+                string location = string.Join(" ", new[] { cpk.Pol, cpk.Angle, cpk.Height }.Where(s => s != null));
+                if (location.Length > 0)
+                    pkstr += " " + location;
+
+                pkstr += Environment.NewLine;
 
                 TextAnnotation TA_Peak = new TextAnnotation();
                 TA_Peak.ForeColor = Color.White;
@@ -489,27 +503,31 @@ namespace EMIEMC_Viewer
                 else
                     TA_Peak.Text = "Peak #" + (pkloop + 1);
 
-                if (Pk[pkloop].margin < 0)
+                if (margin < 0)
                     status = 2;
-                else if (Pk[pkloop].margin < 6 && status == 0)
+                else if (margin < Math.Abs(EMIObj.MarginOffsetDb) && status == 0)
                     status = 1;
 
-                TA_Peak.SetAnchor(EMIChart.Series[seriename].Points[Pk[pkloop].pos]);
+                TA_Peak.SetAnchor(EMIChart.Series[seriename].Points[NearestPoint(trace.FreqHz, cpk.FreqHz)]);
                 EMIChart.Annotations.Add(TA_Peak);
 
             }
 
+            // Verdict stored in the TeraScan file wins over the margin rule (whole file, all traces)
+            if (EMIObj.Verdict != null)
+                status = (EMIObj.Verdict == "FAIL") ? 2 : 0;
+
             // Add Peak lists
             TextAnnotation PkListAnnot = new TextAnnotation();
+            PkListAnnot.Name = "PeakList";
             PkListAnnot.ForeColor = Color.White;
-            PkListAnnot.Text = pkstr;
-            PkListAnnot.AnchorX = 84;
-            PkListAnnot.AnchorY = 92;
+            PkListAnnot.Text = pkstr.TrimEnd();
             PkListAnnot.Alignment = ContentAlignment.TopLeft;
             PkListAnnot.AllowMoving = true;
             PkListAnnot.Font = new Font(new FontFamily("Consolas"), 8f);
 
             EMIChart.Annotations.Add(PkListAnnot);
+            PlacePeakList();
 
             // Add Status
             RectangleAnnotation TA_Status = new RectangleAnnotation();
@@ -559,6 +577,64 @@ namespace EMIEMC_Viewer
             SetGraphTheme();
         }
 
+        // Margin against the drawn limit when the file did not store one
+        private double? PeakMargin(EmiPeak pk)
+        {
+            if (pk.Margin.HasValue)
+                return pk.Margin;
+
+            return LimitMath.LevelAt(CurLim.freqLimits, pk.FreqHz / 1000000) - (pk.QpLevel ?? pk.Level);
+        }
+
+        private static int NearestPoint(double[] freqs, double freq)
+        {
+            int idx = Array.BinarySearch(freqs, freq);
+            if (idx >= 0)
+                return idx;
+
+            idx = ~idx;
+            if (idx == 0)
+                return 0;
+            if (idx >= freqs.Length)
+                return freqs.Length - 1;
+
+            return (freq - freqs[idx - 1] <= freqs[idx] - freq) ? idx - 1 : idx;
+        }
+
+        // Log axis labels (MHz) for a range not covered by the built-in limits: start, 1-3 steps per decade, stop
+        private static List<double> LogAxisLabels(double startMHz, double stopMHz)
+        {
+            List<double> xs = new List<double>() { Math.Round(startMHz, 6) };
+
+            for (double dec = Math.Pow(10, Math.Floor(Math.Log10(startMHz))); dec <= stopMHz; dec *= 10)
+            {
+                foreach (double k in new double[] { 1, 3 })
+                {
+                    double v = Math.Round(k * dec, 6);
+                    if (v > startMHz * 1.4 && v < stopMHz / 1.4)
+                        xs.Add(v);
+                }
+            }
+
+            xs.Add(Math.Round(stopMHz, 6));
+            return xs;
+        }
+
+        private void SetDetectorBox(int index)
+        {
+            UpdatingDetectorBox = true;
+            CISPR_DetectorBox.SelectedIndex = index;
+            UpdatingDetectorBox = false;
+        }
+
+        private void CISPR_DetectorBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (UpdatingDetectorBox || CurMeasurement == null || !CISPR_DetectorBox.Enabled)
+                return;
+
+            ProcessMainGraph(CurMeasurement, true);
+        }
+
         private void AddLog(string log, bool noCRLF = false)
         {
             if (noCRLF)
@@ -571,7 +647,8 @@ namespace EMIEMC_Viewer
         {
             string currentfile = (Graph1radioButton.Checked) ? Graph1PathBox.Text : Graph2PathBox.Text;
 
-            string newfile = currentfile.Replace(".emcemi", " " + DateTime.Now.ToString("yyyyddMMHmmss") + ".png");
+            // Never derive the name by replacing the extension text: a .tb path would be overwritten by the PNG
+            string newfile = Path.Combine(Path.GetDirectoryName(currentfile), Path.GetFileNameWithoutExtension(currentfile) + " " + DateTime.Now.ToString("yyyyddMMHmmss") + ".png");
 
             EMIChart.SaveImage(newfile, ChartImageFormat.Png);
         }

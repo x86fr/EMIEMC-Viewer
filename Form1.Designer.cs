@@ -381,6 +381,7 @@
             this.CISPR_DetectorBox.Name = "CISPR_DetectorBox";
             this.CISPR_DetectorBox.Size = new System.Drawing.Size(100, 21);
             this.CISPR_DetectorBox.TabIndex = 10;
+            this.CISPR_DetectorBox.SelectedIndexChanged += new System.EventHandler(this.CISPR_DetectorBox_SelectedIndexChanged);
             // 
             // groupBox1
             // 
@@ -465,8 +466,8 @@
             // 
             // openFileDialog1
             // 
-            this.openFileDialog1.DefaultExt = "emiemc";
-            this.openFileDialog1.Filter = "EMCEMI files (*.emcemi)|*.emcemi";
+            this.openFileDialog1.DefaultExt = "emcemi";
+            this.openFileDialog1.Filter = "EMI files (*.emcemi;*.tb)|*.emcemi;*.tb|Tektronix EMCEMI (*.emcemi)|*.emcemi|TeraScan (*.tb)|*.tb";
             this.openFileDialog1.RestoreDirectory = true;
             // 
             // checkBox_ForceFail
